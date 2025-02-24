@@ -1,38 +1,50 @@
 #!/bin/bash
-# Storj Node Migration Script with Remote Support and Two-Pass Sync
+# Storj Node Migration Script with Remote Support, Two-Pass Sync, and Auto-Detection of Config File
 #
 # This script assists in migrating your Storj node’s DATA, configuration,
 # and (optionally) LOG files. It supports both local and remote migrations.
 #
-# The script performs an initial sync pass without the --delete flag,
-# then (if the Storj node is detected running) performs a second sync pass
-# with the --delete flag to ensure an exact mirror of the source.
+# The script performs:
+#   - An initial sync pass without the --delete flag.
+#   - A second sync pass (if the Storj node is running) with the --delete flag.
 #
-# Note: It is recommended that you know the Storj node service may be online
-# during the first pass. The second pass is intended to capture any changes.
+# It also attempts to auto-detect the configuration file in the data directory.
 #
 # Check for required tools
-for tool in rsync ssh scp pgrep; do
+for tool in rsync ssh scp pgrep find; do
   if ! command -v "$tool" &> /dev/null; then
     echo "Error: $tool is not installed. Please install it and try again."
     exit 1
   fi
 done
 
-echo "Storj Node Migration Script with Remote Support and Two-Pass Sync"
-echo "==================================================================="
+echo "Storj Node Migration Script with Remote Support, Two-Pass Sync, and Config Auto-Detection"
+echo "==========================================================================================="
 echo "Note: The first sync pass will run regardless of whether the Storj node"
 echo "      is running. A second sync pass with the --delete flag will be run"
 echo "      if the Storj node process is detected, ensuring an exact mirror."
+echo ""
 
 ##############################
 # SOURCE DETAILS
 ##############################
-echo ""
 echo "SOURCE DETAILS"
 echo "--------------"
 read -p "Enter the full path of the current Storj node DATA directory: " OLD_DATA_DIR
-read -p "Enter the full path of the current Storj node CONFIGURATION file (e.g., config.yaml): " OLD_CONFIG_FILE
+
+# Attempt to locate the configuration file in the data directory
+echo "Searching for configuration file in ${OLD_DATA_DIR}..."
+CONFIG_CANDIDATE=$(find "$OLD_DATA_DIR" -maxdepth 1 -type f -iname "config.*" | head -n 1)
+if [[ -n "$CONFIG_CANDIDATE" ]]; then
+  read -p "Found configuration file: ${CONFIG_CANDIDATE}. Press Enter to use this or enter an alternative path: " USER_CONFIG
+  if [[ -n "$USER_CONFIG" ]]; then
+    OLD_CONFIG_FILE="$USER_CONFIG"
+  else
+    OLD_CONFIG_FILE="$CONFIG_CANDIDATE"
+  fi
+else
+  read -p "Configuration file not found in the data directory. Please enter the full path of the configuration file: " OLD_CONFIG_FILE
+fi
 
 read -p "Do you want to migrate the Storj node LOG directory? (Y/n): " MIGRATE_LOGS
 if [[ "$MIGRATE_LOGS" =~ ^[Yy]$ ]]; then
@@ -131,7 +143,7 @@ if [[ "$MIGRATE_LOGS" =~ ^[Yy]$ ]]; then
 fi
 
 ##############################
-# FIRST PASS: INITIAL Sync (without --delete)
+# FIRST PASS: Initial Sync (without --delete)
 ##############################
 echo ""
 echo "Starting first pass of migration (initial sync without --delete flag)..."

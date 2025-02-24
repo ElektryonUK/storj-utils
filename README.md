@@ -14,6 +14,10 @@ The script employs a **two-pass rsync process**:
    - If running, performs a final sync using the `--delete` flag to ensure the destination 
      exactly mirrors the source (removing any files that have been deleted in the source).
 
+Additionally, the script now attempts to auto-detect the configuration file within the data directory.
+If a file matching `config.*` is found, you may confirm its use or provide an alternative path.  
+If no config file is found, you will be prompted to specify its location.
+
 ## Features
 
 - **Interactive Prompts:**  
@@ -23,8 +27,11 @@ The script employs a **two-pass rsync process**:
   Transfer files locally or to a remote server using SSH-based commands.
 
 - **Two-Pass Sync Process:**  
-  - **First Pass:** Initial sync without deletion, to cover the bulk data transfer.
+  - **First Pass:** Initial sync without deletion.
   - **Second Pass:** Final sync (triggered if the Storj node is running) with the `--delete` flag for an exact mirror.
+  
+- **Auto-Detection of Config File:**  
+  The script searches the data directory for a configuration file (e.g., `config.yaml`).
   
 - **Progress Reporting:**  
   Uses `rsync` with `--info=progress2` to display real-time progress, transfer speed, and ETA.
@@ -42,6 +49,7 @@ The script employs a **two-pass rsync process**:
   - `ssh`
   - `scp`
   - `pgrep`
+  - `find`
 
 - **Permissions:**  
   Ensure you have the necessary permissions to read from the source directories and write to the destination.
