@@ -58,3 +58,34 @@ Additional features include:
    Ensure you run the script with root privileges:
    ```bash
    sudo ./migrate_node.sh
+
+
+
+
+# Storj Node Setup Script
+
+## Overview
+
+This script automates the setup of multiple Storj nodes by:
+- Running all system commands with sudo.
+- Prompting for key parameters such as the number of nodes, email, wallet address, node names,
+  server name, country code, starting ports, and storage capacity.
+- Running system updates and installing Docker along with additional required packages.
+- Creating node directories under the non-root user's home directory (e.g., /home/USER/node1, node2, …)
+  and data directories under /data (e.g., /data/disk1, disk2, …).
+- Generating a file called `nodes.conf` that contains, for each node, two docker run commands:
+  - A command to run the container in setup mode.
+  - A command to run the container detached with auto-incremented ports and proper environment variables.
+
+## Prerequisites
+
+- The script must be run with sudo (or as root).
+- The non-root user's home directory (from which the script is run via sudo) will be used for node directories.
+- Ubuntu/Debian-based system with access to apt.
+- Required tools: apt, docker, curl, etc.
+
+## Usage
+
+1. **Run the Script as Root:**
+   ```bash
+   sudo ./setup_storj_nodes.sh
