@@ -1,31 +1,32 @@
 #!/bin/bash
-# Storj Node Migration Script with Remote Support
+# Storj Node Migration Script with Remote Support and Two-Pass Sync
 #
-# This script assists you in migrating your Storj node’s DATA, configuration,
-# and (optionally) LOG files. It can migrate files locally or to a remote server.
+# This script assists in migrating your Storj node’s DATA, configuration,
+# and (optionally) LOG files. It supports both local and remote migrations.
 #
-# IMPORTANT: Stop your Storj node service before running this script.
-# Example: sudo systemctl stop storagenode
-
-# Check required tools
-for tool in rsync ssh scp; do
+# The script performs an initial sync pass without the --delete flag,
+# then (if the Storj node is detected running) performs a second sync pass
+# with the --delete flag to ensure an exact mirror of the source.
+#
+# Note: It is recommended that you know the Storj node service may be online
+# during the first pass. The second pass is intended to capture any changes.
+#
+# Check for required tools
+for tool in rsync ssh scp pgrep; do
   if ! command -v "$tool" &> /dev/null; then
     echo "Error: $tool is not installed. Please install it and try again."
     exit 1
   fi
 done
 
-echo "Storj Node Migration Script with Remote Support"
-echo "==============================================="
-echo "Please ensure your Storj node service is stopped before proceeding."
-read -p "Have you stopped the Storj node service? (Y/n): " nodeStopped
-if [[ ! "$nodeStopped" =~ ^[Yy]$ ]]; then
-  echo "Please stop the Storj node service and then run this script again."
-  exit 1
-fi
+echo "Storj Node Migration Script with Remote Support and Two-Pass Sync"
+echo "==================================================================="
+echo "Note: The first sync pass will run regardless of whether the Storj node"
+echo "      is running. A second sync pass with the --delete flag will be run"
+echo "      if the Storj node process is detected, ensuring an exact mirror."
 
 ##############################
-# SOURCE INFORMATION
+# SOURCE DETAILS
 ##############################
 echo ""
 echo "SOURCE DETAILS"
@@ -54,7 +55,7 @@ else
 fi
 
 ##############################
-# DESTINATION DETAILS FOR CONFIG
+# DESTINATION DETAILS FOR CONFIGURATION
 ##############################
 echo ""
 echo "DESTINATION DETAILS for CONFIGURATION file"
@@ -103,7 +104,7 @@ else
   mkdir -p "$NEW_DATA_DIR"
 fi
 
-# CONFIG directory
+# CONFIGURATION directory
 if [[ "$REMOTE_CONFIG" =~ ^[Yy]$ ]]; then
   echo "Creating remote CONFIG directory on ${REMOTE_HOST_CONFIG}..."
   ssh "${REMOTE_USER_CONFIG}@${REMOTE_HOST_CONFIG}" "mkdir -p \"$NEW_CONFIG_DIR\""
@@ -130,25 +131,25 @@ if [[ "$MIGRATE_LOGS" =~ ^[Yy]$ ]]; then
 fi
 
 ##############################
-# MIGRATE DATA DIRECTORY
+# FIRST PASS: INITIAL Sync (without --delete)
 ##############################
 echo ""
+echo "Starting first pass of migration (initial sync without --delete flag)..."
+
+# DATA sync
 echo "Migrating DATA directory..."
 if [[ "$REMOTE_DATA" =~ ^[Yy]$ ]]; then
   rsync -ah --info=progress2 -e ssh "$OLD_DATA_DIR"/ "${REMOTE_USER_DATA}@${REMOTE_HOST_DATA}:$NEW_DATA_DIR"/
 else
   rsync -ah --info=progress2 "$OLD_DATA_DIR"/ "$NEW_DATA_DIR"/
 fi
-
 if [ $? -ne 0 ]; then
-  echo "Error: Data migration failed. Please check your paths and try again."
+  echo "Error: Data migration (first pass) failed."
   exit 1
 fi
-echo "Data migration completed successfully."
+echo "First pass for DATA migration completed successfully."
 
-##############################
-# MIGRATE CONFIGURATION FILE
-##############################
+# CONFIGURATION file copy (single pass)
 echo ""
 echo "Migrating CONFIGURATION file..."
 if [[ "$REMOTE_CONFIG" =~ ^[Yy]$ ]]; then
@@ -156,30 +157,66 @@ if [[ "$REMOTE_CONFIG" =~ ^[Yy]$ ]]; then
 else
   cp "$OLD_CONFIG_FILE" "$NEW_CONFIG_DIR"/
 fi
-
 if [ $? -ne 0 ]; then
   echo "Error: Configuration file migration failed."
   exit 1
 fi
 echo "Configuration file migrated successfully."
 
-##############################
-# MIGRATE LOG DIRECTORY (if chosen)
-##############################
+# LOG sync (if applicable)
 if [[ "$MIGRATE_LOGS" =~ ^[Yy]$ ]]; then
   echo ""
-  echo "Migrating LOG directory..."
+  echo "Migrating LOG directory (first pass)..."
   if [[ "$REMOTE_LOGS" =~ ^[Yy]$ ]]; then
     rsync -ah --info=progress2 -e ssh "$OLD_LOG_DIR"/ "${REMOTE_USER_LOG}@${REMOTE_HOST_LOG}:$NEW_LOG_DIR"/
   else
     rsync -ah --info=progress2 "$OLD_LOG_DIR"/ "$NEW_LOG_DIR"/
   fi
-
   if [ $? -ne 0 ]; then
-    echo "Error: Log migration failed."
+    echo "Error: Log migration (first pass) failed."
     exit 1
   fi
-  echo "Log migration completed successfully."
+  echo "First pass for LOG migration completed successfully."
+fi
+
+##############################
+# SECOND PASS: Final Sync with --delete Flag
+##############################
+echo ""
+echo "Checking if Storj node is running for the final sync pass..."
+if pgrep -f storagenode >/dev/null; then
+  echo "Storj node process detected. Starting second pass (final sync with --delete flag)..."
+  
+  # DATA second pass with --delete
+  echo "Running second pass for DATA directory..."
+  if [[ "$REMOTE_DATA" =~ ^[Yy]$ ]]; then
+    rsync -ah --info=progress2 --delete -e ssh "$OLD_DATA_DIR"/ "${REMOTE_USER_DATA}@${REMOTE_HOST_DATA}:$NEW_DATA_DIR"/
+  else
+    rsync -ah --info=progress2 --delete "$OLD_DATA_DIR"/ "$NEW_DATA_DIR"/
+  fi
+  if [ $? -ne 0 ]; then
+    echo "Error: Data migration (second pass) failed."
+    exit 1
+  fi
+  echo "Second pass for DATA migration completed successfully."
+
+  # LOG second pass with --delete (if applicable)
+  if [[ "$MIGRATE_LOGS" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo "Running second pass for LOG directory..."
+    if [[ "$REMOTE_LOGS" =~ ^[Yy]$ ]]; then
+      rsync -ah --info=progress2 --delete -e ssh "$OLD_LOG_DIR"/ "${REMOTE_USER_LOG}@${REMOTE_HOST_LOG}:$NEW_LOG_DIR"/
+    else
+      rsync -ah --info=progress2 --delete "$OLD_LOG_DIR"/ "$NEW_LOG_DIR"/
+    fi
+    if [ $? -ne 0 ]; then
+      echo "Error: Log migration (second pass) failed."
+      exit 1
+    fi
+    echo "Second pass for LOG migration completed successfully."
+  fi
+else
+  echo "Storj node is not running. Skipping second sync pass with --delete flag."
 fi
 
 ##############################
@@ -187,5 +224,5 @@ fi
 ##############################
 echo ""
 echo "Migration process completed."
-echo "Please review your new configuration files as needed."
+echo "Review the migrated files and adjust configurations as needed."
 echo "When ready, restart your Storj node service."

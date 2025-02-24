@@ -2,47 +2,53 @@
 
 ## Overview
 
-This script assists in migrating your Storj node's data, configuration, and optionally log files from one location to another. It supports both local transfers and remote migrations using rsync over SSH and scp. The script provides real-time progress updates (including data transfer speeds and estimated time remaining) to help you monitor the migration process.
+This script assists in migrating your Storj node's data, configuration, and (optionally) log files
+from one location to another. It supports both local transfers and remote migrations via SSH.
+
+The script employs a **two-pass rsync process**:
+1. **First Pass:**  
+   - Syncs files without using the `--delete` flag.
+   - Can run while the Storj node is online to copy the bulk of the data.
+2. **Second Pass:**  
+   - Checks if the Storj node process is running.
+   - If running, performs a final sync using the `--delete` flag to ensure the destination 
+     exactly mirrors the source (removing any files that have been deleted in the source).
 
 ## Features
 
 - **Interactive Prompts:**  
-  Gather all required paths and remote server details interactively.
-
+  Gather source and destination paths along with remote server details.
+  
 - **Local & Remote Support:**  
-  Choose between local file transfers or remote migrations by providing SSH credentials and target paths.
+  Transfer files locally or to a remote server using SSH-based commands.
 
+- **Two-Pass Sync Process:**  
+  - **First Pass:** Initial sync without deletion, to cover the bulk data transfer.
+  - **Second Pass:** Final sync (triggered if the Storj node is running) with the `--delete` flag for an exact mirror.
+  
 - **Progress Reporting:**  
-  Uses `rsync` with `--info=progress2` to display progress information such as the current speed and estimated time remaining.
-
-- **Pre-Migration Checks:**  
-  Ensures that the Storj node service is stopped before starting the migration to prevent file conflicts.
+  Uses `rsync` with `--info=progress2` to display real-time progress, transfer speed, and ETA.
 
 - **Error Handling:**  
-  Halts the process if any step fails, ensuring that you can address issues before proceeding further.
+  Checks for errors at each step, ensuring data integrity throughout the migration.
 
 ## Prerequisites
 
 - **Bash Shell:**  
-  The script is written in Bash and should be run in a Unix-like environment.
+  Designed for Unix-like environments.
 
 - **Required Tools:**  
-  - `rsync`  
-  - `ssh`  
-  - `scp`  
-
-  Make sure these tools are installed and available in your system's PATH.
+  - `rsync`
+  - `ssh`
+  - `scp`
+  - `pgrep`
 
 - **Permissions:**  
-  You must have sufficient permissions to read from the source directories and write to the destination directories (both locally and remotely).
-
-- **Service Stopped:**  
-  Ensure that your Storj node service is stopped before running the migration script.  
-  *Example:* `sudo systemctl stop storagenode`
+  Ensure you have the necessary permissions to read from the source directories and write to the destination.
 
 ## Usage
 
-1. **Stop the Storj Node Service:**  
-   Before beginning the migration, stop your Storj node service to ensure no files are being modified:
+1. **Run the Script:**  
+   Execute the script and follow the interactive prompts:
    ```bash
-   sudo systemctl stop storagenode
+   ./migrate_node.sh
