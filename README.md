@@ -22,9 +22,13 @@ Additional features include:
   to specify its location.
 
 - **Docker Container Shutdown Option (Optional):**  
-  Before the second sync pass, the script lists all running Docker containers and allows you
-  to select which containers should be shut down. This helps prevent live container processes
+  Before the second sync pass, the script lists running Docker containers and allows you
+  to select which containers should be shut down. This helps prevent container-based file changes
   from interfering with the final sync.
+
+- **Root Privilege Requirement:**  
+  Most commands in this script require root privileges. The script checks if it is run as root
+  and exits if not.
 
 - **Progress Reporting:**  
   Uses `rsync` with `--info=progress2` to display real-time progress, transfer speed, and ETA.
@@ -46,11 +50,11 @@ Additional features include:
   - `docker` (for the Docker container shutdown step)
 
 - **Permissions:**  
-  Ensure you have the necessary permissions to read from the source directories and write to the destination.
+  This script must be run as root. Use `sudo` or run as the root user.
 
 ## Usage
 
-1. **Run the Script:**  
-   Execute the script and follow the interactive prompts:
+1. **Run the Script as Root:**  
+   Ensure you run the script with root privileges:
    ```bash
-   ./migrate_node.sh
+   sudo ./migrate_node.sh

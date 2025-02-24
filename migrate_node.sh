@@ -1,12 +1,20 @@
 #!/bin/bash
 # Storj Node Migration Script with Remote Support, Two-Pass Sync, Config Auto-Detection,
-# and Docker Container Shutdown Option
+# Docker Container Shutdown Option, and Root Privilege Requirement
 #
 # This script assists in migrating your Storj node’s DATA, configuration, and (optionally) LOG files.
 # It supports local and remote migrations, performs a two-pass rsync process, auto-detects the
 # configuration file in the data directory, and (optionally) allows you to stop selected Docker containers
 # before performing the final sync pass with the --delete flag.
 #
+# IMPORTANT: This script must be run as root.
+
+# Ensure the script is run as root.
+if [ "$(id -u)" -ne 0 ]; then
+  echo "This script must be run as root. Please run with sudo or as root."
+  exit 1
+fi
+
 # Check for required tools
 for tool in rsync ssh scp pgrep find docker; do
   if ! command -v "$tool" &> /dev/null; then
@@ -15,7 +23,7 @@ for tool in rsync ssh scp pgrep find docker; do
 done
 
 echo "Storj Node Migration Script with Remote Support, Two-Pass Sync, Config Auto-Detection,"
-echo "and Docker Container Shutdown Option"
+echo "Docker Container Shutdown Option, and Root Privilege Check"
 echo "==========================================================================================="
 echo "Note: The first sync pass will run regardless of whether the Storj node is running."
 echo "      A second sync pass with the --delete flag will be run if the Storj node process is detected,"
