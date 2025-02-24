@@ -12,27 +12,20 @@ The script employs a **two-pass rsync process**:
 2. **Second Pass:**  
    - Checks if the Storj node process is running.
    - If running, performs a final sync using the `--delete` flag to ensure the destination 
-     exactly mirrors the source (removing any files that have been deleted in the source).
+     exactly mirrors the source.
 
-Additionally, the script now attempts to auto-detect the configuration file within the data directory.
-If a file matching `config.*` is found, you may confirm its use or provide an alternative path.  
-If no config file is found, you will be prompted to specify its location.
+Additional features include:
 
-## Features
-
-- **Interactive Prompts:**  
-  Gather source and destination paths along with remote server details.
-  
-- **Local & Remote Support:**  
-  Transfer files locally or to a remote server using SSH-based commands.
-
-- **Two-Pass Sync Process:**  
-  - **First Pass:** Initial sync without deletion.
-  - **Second Pass:** Final sync (triggered if the Storj node is running) with the `--delete` flag for an exact mirror.
-  
 - **Auto-Detection of Config File:**  
   The script searches the data directory for a configuration file (e.g., `config.yaml`).
-  
+  If found, you may accept it or provide an alternative path; if not found, you will be prompted
+  to specify its location.
+
+- **Docker Container Shutdown Option (Optional):**  
+  Before the second sync pass, the script lists all running Docker containers and allows you
+  to select which containers should be shut down. This helps prevent live container processes
+  from interfering with the final sync.
+
 - **Progress Reporting:**  
   Uses `rsync` with `--info=progress2` to display real-time progress, transfer speed, and ETA.
 
@@ -50,6 +43,7 @@ If no config file is found, you will be prompted to specify its location.
   - `scp`
   - `pgrep`
   - `find`
+  - `docker` (for the Docker container shutdown step)
 
 - **Permissions:**  
   Ensure you have the necessary permissions to read from the source directories and write to the destination.

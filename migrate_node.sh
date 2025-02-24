@@ -1,28 +1,25 @@
 #!/bin/bash
-# Storj Node Migration Script with Remote Support, Two-Pass Sync, and Auto-Detection of Config File
+# Storj Node Migration Script with Remote Support, Two-Pass Sync, Config Auto-Detection,
+# and Docker Container Shutdown Option
 #
-# This script assists in migrating your Storj node’s DATA, configuration,
-# and (optionally) LOG files. It supports both local and remote migrations.
-#
-# The script performs:
-#   - An initial sync pass without the --delete flag.
-#   - A second sync pass (if the Storj node is running) with the --delete flag.
-#
-# It also attempts to auto-detect the configuration file in the data directory.
+# This script assists in migrating your Storj node’s DATA, configuration, and (optionally) LOG files.
+# It supports local and remote migrations, performs a two-pass rsync process, auto-detects the
+# configuration file in the data directory, and (optionally) allows you to stop selected Docker containers
+# before performing the final sync pass with the --delete flag.
 #
 # Check for required tools
-for tool in rsync ssh scp pgrep find; do
+for tool in rsync ssh scp pgrep find docker; do
   if ! command -v "$tool" &> /dev/null; then
-    echo "Error: $tool is not installed. Please install it and try again."
-    exit 1
+    echo "Warning: $tool is not installed. Some functionality may be limited."
   fi
 done
 
-echo "Storj Node Migration Script with Remote Support, Two-Pass Sync, and Config Auto-Detection"
+echo "Storj Node Migration Script with Remote Support, Two-Pass Sync, Config Auto-Detection,"
+echo "and Docker Container Shutdown Option"
 echo "==========================================================================================="
-echo "Note: The first sync pass will run regardless of whether the Storj node"
-echo "      is running. A second sync pass with the --delete flag will be run"
-echo "      if the Storj node process is detected, ensuring an exact mirror."
+echo "Note: The first sync pass will run regardless of whether the Storj node is running."
+echo "      A second sync pass with the --delete flag will be run if the Storj node process is detected,"
+echo "      ensuring an exact mirror."
 echo ""
 
 ##############################
@@ -189,6 +186,34 @@ if [[ "$MIGRATE_LOGS" =~ ^[Yy]$ ]]; then
     exit 1
   fi
   echo "First pass for LOG migration completed successfully."
+fi
+
+##############################
+# DOCKER CONTAINER SHUTDOWN (Optional)
+##############################
+echo ""
+echo "Docker Container Shutdown Step (Optional)"
+echo "-----------------------------------------"
+if command -v docker >/dev/null 2>&1; then
+  echo "Listing running Docker containers:"
+  docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Names}}\t{{.Status}}"
+  echo ""
+  read -p "Enter container IDs or names (separated by spaces) to shut down (or leave blank to skip): " containers_to_stop
+  if [[ -n "$containers_to_stop" ]]; then
+    for container in $containers_to_stop; do
+      echo "Stopping container: $container"
+      docker stop "$container"
+      if [ $? -eq 0 ]; then
+        echo "Container $container stopped successfully."
+      else
+        echo "Failed to stop container $container."
+      fi
+    done
+  else
+    echo "No Docker containers selected for shutdown."
+  fi
+else
+  echo "Docker is not installed. Skipping Docker container shutdown step."
 fi
 
 ##############################
