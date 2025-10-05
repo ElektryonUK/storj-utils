@@ -1,12 +1,26 @@
 #!/bin/bash
 
 # === Configuration ===
-DEST="/data/disk3/"                            # Destination directory
-SRC="/data/disk1/disk3/"                       # Source directory (Storj node data)
+DEST="/data/disk4/"                            # Destination directory
+SRC="/data/disk3/disk4/"                       # Source directory (Storj node data)
 WORKDIR="/home/elektryon/tmp_backup"           # Temporary working directory
 mkdir -p "$WORKDIR"
 
-JOBS=4                                         # Number of parallel rsync jobs
+# === Step 0: Determine optimal job count ===
+CPU_CORES=$(nproc)
+echo "🧮 Detected $CPU_CORES CPU cores."
+
+# Ask user if this is a failing HDD
+read -p "💿 Is this a failing or degraded HDD? (y/n): " FAILING
+if [[ "$FAILING" =~ ^[Yy]$ ]]; then
+    JOBS=2
+    echo "⚠️  Failing drive detected — limiting parallel rsync to 2 jobs for safety."
+else
+    JOBS=$(( CPU_CORES / 2 ))
+    [[ $JOBS -lt 2 ]] && JOBS=2
+    echo "🚀 Using $JOBS parallel rsync jobs."
+fi
+
 FILELIST="$WORKDIR/filelist_all.txt"           # Master list of all files to back up
 
 # === Step 1: Build full file list with progress ===
@@ -34,7 +48,7 @@ split -n l/$JOBS "$FILELIST" "$WORKDIR/filelist_chunk_"
 
 # === Step 3: Calculate total size ===
 TOTAL_SIZE=$(du -sb "$SRC" | awk '{print $1}')
-echo "Total size to backup: $((TOTAL_SIZE/1024/1024)) MB"
+echo "💾 Total size to backup: $((TOTAL_SIZE/1024/1024)) MB"
 
 # === Step 4: Start parallel rsync jobs ===
 echo "🚀 Starting parallel rsync jobs..."
